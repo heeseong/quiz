@@ -30,6 +30,26 @@ HOME → NICKNAME → CATEGORY_SELECT → QUIZ → CATEGORY_RESULT → (back to 
 
 Routes mirror this flow: `/` → `/nickname` → `/category` → `/quiz` → `/result/category` → `/result/final`.
 
+Route guard: `RequireSession` in `App.tsx` redirects to `/` if `nickname` is empty, protecting `/category`, `/quiz`, `/result/*`.
+
+### Design system
+
+Brand colors defined in `src/index.css` via `@theme`:
+- Main: `--color-brand: #3B5BA5` (deep blue)
+- Accent: `--color-accent: #FF6B35` (orange)
+
+CSS animation classes also defined there: `.animate-float`, `.animate-fade-up`, `.animate-scale-in`.
+
+### Common components (`src/components/`)
+
+| File | Purpose |
+|------|---------|
+| `Button.tsx` | `variant` (primary/secondary/ghost) × `size` (sm/md/lg) + `loading` prop |
+| `Card.tsx` | `clickable` hover-lift effect, `selected` ring highlight |
+| `Badge.tsx` | Category-aware color via `color="category" category={cat}` |
+| `ProgressBar.tsx` | CSS transition progress fill, `height` (sm/md/lg), `showLabel` |
+| `LeaderboardModal.tsx` | Full-screen overlay, ESC/backdrop close, TOP3 medal icons |
+
 ### Key design decisions
 
 **Answer correctness mapping** — `src/data/questions.ts` stores answers as original option indices (0–3). `shuffleOptions()` in `src/utils/quiz.ts` shuffles displayed options and returns `shuffledToOriginal[]` so QuizPage can map a user's shuffled selection back to the original index before calling `submitAnswer`. The store always compares against `question.answer` (original index).
@@ -42,6 +62,10 @@ Routes mirror this flow: `/` → `/nickname` → `/category` → `/quiz` → `/r
 **Leaderboard** — persisted to `localStorage` key `quiz_leaderboard`, max 20 entries sorted by `totalScore` desc. Written once per session in `FinalResultPage` via a `useRef` guard to prevent double-writes in StrictMode.
 
 **Timer** — `src/hooks/useTimer.ts` resets when its `initialSeconds` dependency changes (keyed to `currentQuestionIndex` via a `useEffect` in QuizPage).
+
+**Nickname validation** — 2–10 chars, Korean/English/numbers only (`/^[가-힣a-zA-Z0-9]+$/`), validated in real-time in `NicknamePage.tsx`.
+
+**Completed category detection** — `CategorySelectPage` checks completion by verifying all questions in a category have an entry in `answers` (not by ID prefix), using `questions` data directly.
 
 ### Data
 
