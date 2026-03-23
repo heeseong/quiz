@@ -36,3 +36,15 @@ body {
 .animate-float    { animation: float 3s ease-in-out infinite; }
 .animate-fade-up  { animation: fadeInUp 0.4s ease both; }
 .animate-scale-in { animation: scaleIn 0.25s ease both; }
+.animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes sparkle {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.15); }
+}
+.animate-sparkle { animation: sparkle 0.5s ease-in-out 3; }

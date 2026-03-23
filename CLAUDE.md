@@ -38,7 +38,7 @@ Brand colors defined in `src/index.css` via `@theme`:
 - Main: `--color-brand: #3B5BA5` (deep blue)
 - Accent: `--color-accent: #FF6B35` (orange)
 
-CSS animation classes also defined there: `.animate-float`, `.animate-fade-up`, `.animate-scale-in`.
+CSS animation classes also defined there: `.animate-float`, `.animate-fade-up`, `.animate-scale-in`, `.animate-slide-up`, `.animate-sparkle`.
 
 ### Common components (`src/components/`)
 
@@ -49,6 +49,7 @@ CSS animation classes also defined there: `.animate-float`, `.animate-fade-up`, 
 | `Badge.tsx` | Category-aware color via `color="category" category={cat}` |
 | `ProgressBar.tsx` | CSS transition progress fill, `height` (sm/md/lg), `showLabel` |
 | `LeaderboardModal.tsx` | Full-screen overlay, ESC/backdrop close, TOP3 medal icons |
+| `FeedbackOverlay.tsx` | Bottom-sheet overlay after answering; shows result, score chips, explanation, 2-s auto-advance countdown ring |
 
 ### Key design decisions
 
@@ -61,11 +62,17 @@ CSS animation classes also defined there: `.animate-float`, `.animate-fade-up`, 
 
 **Leaderboard** — persisted to `localStorage` key `quiz_leaderboard`, max 20 entries sorted by `totalScore` desc. Written once per session in `FinalResultPage` via a `useRef` guard to prevent double-writes in StrictMode.
 
-**Timer** — `src/hooks/useTimer.ts` resets when its `initialSeconds` dependency changes (keyed to `currentQuestionIndex` via a `useEffect` in QuizPage).
+**Timer** — `src/hooks/useTimer.ts` returns `{ remaining, stop }`. Resets when `initialSeconds` changes (keyed to `currentQuestionIndex` via a `useEffect` in QuizPage). `stop()` is called immediately on answer selection to halt the countdown. `onExpire` is held in a ref to avoid stale-closure issues.
 
 **Nickname validation** — 2–10 chars, Korean/English/numbers only (`/^[가-힣a-zA-Z0-9]+$/`), validated in real-time in `NicknamePage.tsx`.
 
-**Completed category detection** — `CategorySelectPage` checks completion by verifying all questions in a category have an entry in `answers` (not by ID prefix), using `questions` data directly.
+**Completed category detection** — `CategorySelectPage` and `CategoryResultPage` both check completion by verifying all questions in a category have an entry in `answers` (not by ID prefix), using `questions` data directly.
+
+**Feedback flow** — After an answer (or timeout), `QuizPage` sets `revealed=true` and renders `FeedbackOverlay`. The overlay auto-advances after 2 s; the user can also tap the next button to skip. The overlay calculates `earnedBase` (+10 if correct) and `earnedBonus` (+5 if correct within 10 s) independently of the store to display a score breakdown.
+
+**QuizPage timer colors** — Circular SVG timer: blue (`#3B5BA5`) for >10 s, orange (`#f97316`) for 4–10 s, red (`#ef4444`) + `animate-pulse` for ≤3 s.
+
+**CategoryResultPage score breakdown** — `totalScore = scores[currentCategory]` (already includes perfect bonus after `completeCategory()` runs). `perfectBonus = isPerfect ? 50 : 0`; `baseScore = totalScore - perfectBonus`. Wrong answers show user's choice vs correct answer with explanation, with a collapse toggle.
 
 ### Data
 

@@ -68,14 +68,15 @@ src/
     Badge.tsx         카테고리 색상 자동 적용
     ProgressBar.tsx   CSS transition 진행 바
     LeaderboardModal.tsx  리더보드 오버레이 모달
+    FeedbackOverlay.tsx   답변 후 바텀 시트(결과·점수·해설·2초 자동 이동)
   pages/            # 라우트 페이지
     HomePage.tsx       타이틀·시작 버튼·순위 모달
     NicknamePage.tsx   실시간 유효성 검사 (2~10자, 한/영/숫자)
     CategorySelectPage.tsx  카드형 카테고리 선택 + 진행 현황
-    QuizPage.tsx       30초 타이머, 선택지 셔플, 해설
-    CategoryResultPage.tsx  카테고리 정오표
+    QuizPage.tsx       원형 SVG 타이머(색상 변환+깜박임), 선택지 셔플, FeedbackOverlay 연동
+    CategoryResultPage.tsx  정답률 링 차트, 오답 상세(접기/펼치기), 퍼펙트 보너스 분리 표시
     FinalResultPage.tsx     총점·등급·리더보드 저장
-    LeaderboardPage.tsx     (STEP 4 구현 예정)
+    LeaderboardPage.tsx     (구현 예정)
   store/
     gameStore.ts      Zustand 스토어 (점수 계산, 리더보드 I/O)
   data/
@@ -92,5 +93,5 @@ src/
 
 - **메인 컬러**: `#3B5BA5` (딥 블루)
 - **포인트 컬러**: `#FF6B35` (오렌지)
-- CSS 애니메이션: `.animate-float` / `.animate-fade-up` / `.animate-scale-in` (`src/index.css`)
+- CSS 애니메이션: `.animate-float` / `.animate-fade-up` / `.animate-scale-in` / `.animate-slide-up` / `.animate-sparkle` (`src/index.css`)
 - 반응형: 모바일(375px) ~ 데스크탑(1280px)

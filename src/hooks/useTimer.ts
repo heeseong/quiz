@@ -1,25 +1,32 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 export function useTimer(initialSeconds: number, onExpire?: () => void) {
-  const [timeLeft, setTimeLeft] = useState(initialSeconds);
+  const [remaining, setRemaining] = useState(initialSeconds);
+  const [stopped, setStopped] = useState(false);
   const expiredRef = useRef(false);
+  const onExpireRef = useRef(onExpire);
+  onExpireRef.current = onExpire;
 
   useEffect(() => {
     expiredRef.current = false;
-    setTimeLeft(initialSeconds);
+    setRemaining(initialSeconds);
+    setStopped(false);
   }, [initialSeconds]);
 
   useEffect(() => {
-    if (timeLeft <= 0) {
+    if (stopped) return;
+    if (remaining <= 0) {
       if (!expiredRef.current) {
         expiredRef.current = true;
-        onExpire?.();
+        onExpireRef.current?.();
       }
       return;
     }
-    const id = setTimeout(() => setTimeLeft((t) => t - 1), 1000);
+    const id = setTimeout(() => setRemaining((t) => t - 1), 1000);
     return () => clearTimeout(id);
-  }, [timeLeft, onExpire]);
+  }, [remaining, stopped]);
 
-  return timeLeft;
+  const stop = useCallback(() => setStopped(true), []);
+
+  return { remaining, stop };
 }
