@@ -32,19 +32,12 @@ export function formatTime(seconds: number): string {
   return s === 0 ? `${m}분` : `${m}분 ${s}초`;
 }
 
-export function getGrade(score: number, total: number): string {
-  const ratio = total === 0 ? 0 : score / total;
-  if (ratio >= 0.97) return 'A+';
-  if (ratio >= 0.93) return 'A';
-  if (ratio >= 0.90) return 'A-';
-  if (ratio >= 0.87) return 'B+';
-  if (ratio >= 0.83) return 'B';
-  if (ratio >= 0.80) return 'B-';
-  if (ratio >= 0.77) return 'C+';
-  if (ratio >= 0.73) return 'C';
-  if (ratio >= 0.70) return 'C-';
-  if (ratio >= 0.60) return 'D';
-  return 'F';
+export function getGrade(totalScore: number): { grade: string; label: string; emoji: string } {
+  if (totalScore >= 550) return { grade: 'S', label: '퀴즈 천재!', emoji: '🏆' };
+  if (totalScore >= 450) return { grade: 'A', label: '훌륭해요!', emoji: '⭐' };
+  if (totalScore >= 350) return { grade: 'B', label: '잘했어요!', emoji: '👍' };
+  if (totalScore >= 250) return { grade: 'C', label: '조금만 더!', emoji: '😊' };
+  return { grade: 'D', label: '다시 도전!', emoji: '💪' };
 }
 
 export function getCategoryLabel(category: Category): string {

@@ -29,6 +29,7 @@ interface GameStore extends GameSession {
   nextQuestion: () => void;
   completeCategory: () => void;
   resetGame: () => void;
+  resetQuiz: () => void;
   getLeaderboard: () => PlayerRecord[];
   saveToLeaderboard: (record: PlayerRecord) => void;
 }
@@ -98,6 +99,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   resetGame() {
     set({ ...initialSession });
+  },
+
+  resetQuiz() {
+    const { nickname } = get();
+    set({ ...initialSession, nickname, startedAt: Date.now(), phase: 'CATEGORY_SELECT' });
   },
 
   getLeaderboard() {

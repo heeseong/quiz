@@ -50,6 +50,7 @@ CSS animation classes also defined there: `.animate-float`, `.animate-fade-up`, 
 | `ProgressBar.tsx` | CSS transition progress fill, `height` (sm/md/lg), `showLabel` |
 | `LeaderboardModal.tsx` | Full-screen overlay, ESC/backdrop close, TOP3 medal icons |
 | `FeedbackOverlay.tsx` | Bottom-sheet overlay after answering; shows result, score chips, explanation, 2-s auto-advance countdown ring |
+| `Modal.tsx` | Generic confirmation modal; ESC/backdrop close, `animate-scale-in`; used for destructive-action dialogs |
 
 ### Key design decisions
 
@@ -60,9 +61,11 @@ CSS animation classes also defined there: `.animate-float`, `.animate-fade-up`, 
 - Time-out (`selected === -1`) or wrong: 0 pts
 - Perfect category (20/20 correct): +50 bonus applied in `completeCategory()`
 
-**Leaderboard** — persisted to `localStorage` key `quiz_leaderboard`, max 20 entries sorted by `totalScore` desc. Written once per session in `FinalResultPage` via a `useRef` guard to prevent double-writes in StrictMode.
+**Leaderboard** — persisted to `localStorage` key `quiz_leaderboard`, max 20 entries sorted by `totalScore` desc. Written once per session in `FinalResultPage` via a `useRef` guard (`saved`) to prevent double-writes in StrictMode. `sessionId` is generated with `crypto.randomUUID()` and passed to `/leaderboard` via `location.state` for current-session row highlighting.
 
-**Timer** — `src/hooks/useTimer.ts` returns `{ remaining, stop }`. Resets when `initialSeconds` changes (keyed to `currentQuestionIndex` via a `useEffect` in QuizPage). `stop()` is called immediately on answer selection to halt the countdown. `onExpire` is held in a ref to avoid stale-closure issues.
+**Timer** — `src/hooks/useTimer.ts` uses `useReducer` internally (`TICK` / `STOP` / `RESET` actions) to avoid `setState`-in-effect lint violations. Returns `{ remaining, stop }`. `onExpire` is synced to a ref via `useEffect` (no deps) to avoid stale-closure issues. `stop()` dispatches `RESET` is triggered when `initialSeconds` changes.
+
+**QuizPage state** — `selected`, `revealed`, `timeSpentState` are managed by a single `useReducer` (`SELECT` / `EXPIRE` / `RESET`). Reset on `currentQuestionIndex` change via `dispatch({ type: 'RESET' })` (avoids `setState`-in-effect). Elapsed time is computed as `TIME_LIMIT - remaining` at the moment of selection (no `Date.now()` in event handlers).
 
 **Nickname validation** — 2–10 chars, Korean/English/numbers only (`/^[가-힣a-zA-Z0-9]+$/`), validated in real-time in `NicknamePage.tsx`.
 
@@ -73,6 +76,12 @@ CSS animation classes also defined there: `.animate-float`, `.animate-fade-up`, 
 **QuizPage timer colors** — Circular SVG timer: blue (`#3B5BA5`) for >10 s, orange (`#f97316`) for 4–10 s, red (`#ef4444`) + `animate-pulse` for ≤3 s.
 
 **CategoryResultPage score breakdown** — `totalScore = scores[currentCategory]` (already includes perfect bonus after `completeCategory()` runs). `perfectBonus = isPerfect ? 50 : 0`; `baseScore = totalScore - perfectBonus`. Wrong answers show user's choice vs correct answer with explanation, with a collapse toggle.
+
+**FinalResultPage** — `getGrade(totalScore)` returns `{ grade, label, emoji }` with point-based thresholds (S≥550, A≥450, B≥350, C≥250, D<250). `durationSeconds` is computed via lazy `useState(() => Math.round((Date.now() - startedAt) / 1000))` so it runs only once on mount. Count-up animation uses `setInterval` in `useCountUp` hook. Category bar widths animate from 0% to actual percentage via `animated` state toggled after 400 ms. Share button copies formatted score text to clipboard. `resetQuiz()` store action keeps nickname but clears scores/answers/phase for "다시 도전하기".
+
+**LeaderboardPage** — reads `localStorage` on mount into local state. Top-3 rendered as a podium (display order: 2nd | 1st | 3rd). Rows 4–20 in a table. Current-session row highlighted via `location.state.currentSessionId`. Data-clear confirmation uses `Modal.tsx`. Route `/leaderboard` is public (no `RequireSession` guard).
+
+**getGrade** — signature changed from ratio-based `(score, total) → string` to point-based `(totalScore) → { grade, label, emoji }`. Update all callers accordingly.
 
 ### Data
 

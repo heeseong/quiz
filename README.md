@@ -53,10 +53,21 @@ npm run preview  # 프로덕션 빌드 미리보기
 - 오답 / 시간 초과: **0점**
 - 카테고리 전체 정답(20/20): **+50점 보너스**
 
+### 등급 기준
+
+| 점수 | 등급 | 메시지 |
+|------|------|--------|
+| 550점 이상 | S 🏆 | 퀴즈 천재! |
+| 450~549점 | A ⭐ | 훌륭해요! |
+| 350~449점 | B 👍 | 잘했어요! |
+| 250~349점 | C 😊 | 조금만 더! |
+| 249점 이하 | D 💪 | 다시 도전! |
+
 ### 리더보드
 
 - `localStorage` (`quiz_leaderboard` 키)에 저장
 - 최대 20개 항목, 총점 내림차순 정렬
+- 플레이 후 최종 결과 화면에서 자동 저장 (`/leaderboard`에서 확인)
 
 ## 프로젝트 구조
 
@@ -69,14 +80,15 @@ src/
     ProgressBar.tsx   CSS transition 진행 바
     LeaderboardModal.tsx  리더보드 오버레이 모달
     FeedbackOverlay.tsx   답변 후 바텀 시트(결과·점수·해설·2초 자동 이동)
+    Modal.tsx             범용 확인 모달 (ESC/배경 클릭 닫기)
   pages/            # 라우트 페이지
     HomePage.tsx       타이틀·시작 버튼·순위 모달
     NicknamePage.tsx   실시간 유효성 검사 (2~10자, 한/영/숫자)
     CategorySelectPage.tsx  카드형 카테고리 선택 + 진행 현황
     QuizPage.tsx       원형 SVG 타이머(색상 변환+깜박임), 선택지 셔플, FeedbackOverlay 연동
     CategoryResultPage.tsx  정답률 링 차트, 오답 상세(접기/펼치기), 퍼펙트 보너스 분리 표시
-    FinalResultPage.tsx     총점·등급·리더보드 저장
-    LeaderboardPage.tsx     (구현 예정)
+    FinalResultPage.tsx     총점 카운트업·S~D 등급·카테고리 막대 그래프·공유·리더보드 저장
+    LeaderboardPage.tsx     포디엄(TOP 3)·테이블(4~20위)·현재 세션 강조·데이터 초기화
   store/
     gameStore.ts      Zustand 스토어 (점수 계산, 리더보드 I/O)
   data/

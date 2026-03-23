@@ -25,7 +25,7 @@ export default function FeedbackOverlay({
 }: FeedbackOverlayProps) {
   const [countdown, setCountdown] = useState(AUTO_ADVANCE_SEC);
   const onNextRef = useRef(onNext);
-  onNextRef.current = onNext;
+  useEffect(() => { onNextRef.current = onNext; });
 
   useEffect(() => {
     if (countdown <= 0) {

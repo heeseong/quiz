@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useReducer } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { questions } from '../data/questions';
@@ -67,28 +67,36 @@ export default function QuizPage() {
   const [prepared] = useState<ShuffledQ[]>(() =>
     currentCategory ? prepareQuestions(currentCategory) : []
   );
-  const [selected, setSelected] = useState<number | null>(null);   // shuffled index
-  const [revealed, setRevealed] = useState(false);
-  const [timeSpentState, setTimeSpentState] = useState(0);
-  const [questionStart, setQuestionStart] = useState(Date.now());
+  type QState = { selected: number | null; revealed: boolean; timeSpentState: number };
+  type QAction =
+    | { type: 'SELECT'; idx: number; ts: number }
+    | { type: 'EXPIRE' }
+    | { type: 'RESET' };
+
+  const [{ selected, revealed, timeSpentState }, dispatch] = useReducer(
+    (_: QState, action: QAction): QState => {
+      switch (action.type) {
+        case 'SELECT': return { selected: action.idx, revealed: true, timeSpentState: action.ts };
+        case 'EXPIRE': return { selected: null, revealed: true, timeSpentState: TIME_LIMIT };
+        case 'RESET':  return { selected: null, revealed: false, timeSpentState: 0 };
+      }
+    },
+    { selected: null, revealed: false, timeSpentState: 0 }
+  );
 
   const current = prepared[currentQuestionIndex];
 
   const handleExpire = useCallback(() => {
     if (revealed || !current) return;
-    setTimeSpentState(TIME_LIMIT);
+    dispatch({ type: 'EXPIRE' });
     submitAnswer(current.question.id, -1, TIME_LIMIT);
-    setRevealed(true);
   }, [revealed, current, submitAnswer]);
 
   const { remaining, stop } = useTimer(TIME_LIMIT, handleExpire);
 
   // 문제가 바뀔 때 상태 초기화
   useEffect(() => {
-    setSelected(null);
-    setRevealed(false);
-    setTimeSpentState(0);
-    setQuestionStart(Date.now());
+    dispatch({ type: 'RESET' });
   }, [currentQuestionIndex]);
 
   if (!currentCategory || !current) {
@@ -99,10 +107,8 @@ export default function QuizPage() {
   function handleSelect(shuffledIdx: number) {
     if (revealed) return;
     stop();
-    const ts = Math.round((Date.now() - questionStart) / 1000);
-    setSelected(shuffledIdx);
-    setRevealed(true);
-    setTimeSpentState(ts);
+    const ts = TIME_LIMIT - remaining;
+    dispatch({ type: 'SELECT', idx: shuffledIdx, ts });
     const originalIdx = current.shuffledToOriginal[shuffledIdx] as 0 | 1 | 2 | 3;
     submitAnswer(current.question.id, originalIdx, ts);
   }
@@ -132,7 +138,7 @@ export default function QuizPage() {
 
       {/* ── 상단 헤더 ── */}
       <div className="flex items-center justify-between gap-2">
-        <Badge color="category" category={currentCategory as any}>
+        <Badge color="category" category={currentCategory ?? undefined}>
           {getCategoryEmoji(currentCategory)} {getCategoryLabel(currentCategory)}
         </Badge>
         <span className="text-sm font-medium text-gray-500">
