@@ -38,7 +38,11 @@ Brand colors defined in `src/index.css` via `@theme`:
 - Main: `--color-brand: #3B5BA5` (deep blue)
 - Accent: `--color-accent: #FF6B35` (orange)
 
-CSS animation classes also defined there: `.animate-float`, `.animate-fade-up`, `.animate-scale-in`, `.animate-slide-up`, `.animate-sparkle`.
+CSS animation classes also defined there: `.animate-float`, `.animate-fade-up`, `.animate-scale-in`, `.animate-slide-up`, `.animate-sparkle`, `.animate-shake`, `.animate-float-up`, `.animate-timer-num-pulse`, `.animate-slide-in-right`.
+
+`html { font-size: var(--app-font-size, 16px) }` — controlled by `useSettings` (normal=16px, large=18px). Scales all Tailwind rem values. Set via `document.documentElement.style.setProperty` in `App.tsx`.
+
+`.sr-only` — screen-reader-only utility class defined in CSS (not from Tailwind).
 
 ### Common components (`src/components/`)
 
@@ -49,8 +53,9 @@ CSS animation classes also defined there: `.animate-float`, `.animate-fade-up`, 
 | `Badge.tsx` | Category-aware color via `color="category" category={cat}` |
 | `ProgressBar.tsx` | CSS transition progress fill, `height` (sm/md/lg), `showLabel` |
 | `LeaderboardModal.tsx` | Full-screen overlay, ESC/backdrop close, TOP3 medal icons |
-| `FeedbackOverlay.tsx` | Bottom-sheet overlay after answering; shows result, score chips, explanation, 2-s auto-advance countdown ring |
+| `FeedbackOverlay.tsx` | Bottom-sheet overlay after answering; score float-up animation, result, score chips, explanation, 2-s auto-advance countdown ring; `role="dialog"` + `autoFocus` on next button |
 | `Modal.tsx` | Generic confirmation modal; ESC/backdrop close, `animate-scale-in`; used for destructive-action dialogs |
+| `ErrorBoundary.tsx` | Class component error boundary; catches render errors, shows fallback UI with reload button |
 
 ### Key design decisions
 
@@ -77,11 +82,38 @@ CSS animation classes also defined there: `.animate-float`, `.animate-fade-up`, 
 
 **CategoryResultPage score breakdown** — `totalScore = scores[currentCategory]` (already includes perfect bonus after `completeCategory()` runs). `perfectBonus = isPerfect ? 50 : 0`; `baseScore = totalScore - perfectBonus`. Wrong answers show user's choice vs correct answer with explanation, with a collapse toggle.
 
-**FinalResultPage** — `getGrade(totalScore)` returns `{ grade, label, emoji }` with point-based thresholds (S≥550, A≥450, B≥350, C≥250, D<250). `durationSeconds` is computed via lazy `useState(() => Math.round((Date.now() - startedAt) / 1000))` so it runs only once on mount. Count-up animation uses `setInterval` in `useCountUp` hook. Category bar widths animate from 0% to actual percentage via `animated` state toggled after 400 ms. Share button copies formatted score text to clipboard. `resetQuiz()` store action keeps nickname but clears scores/answers/phase for "다시 도전하기".
+**FinalResultPage** — `getGrade(totalScore)` returns `{ grade, label, emoji }` with point-based thresholds (S≥550, A≥450, B≥350, C≥250, D<250). `durationSeconds` is computed via lazy `useState(() => Math.round((Date.now() - startedAt) / 1000))` so it runs only once on mount. Count-up animation uses `requestAnimationFrame` + `useReducer` in `useCountUp` (easeOutCubic). Category bar widths animate from 0% to actual percentage via `animated` state toggled after 400 ms. Share button copies formatted score text to clipboard. `resetQuiz()` store action keeps nickname but clears scores/answers/phase for "다시 도전하기". Plays `playFinal(grade)` sound on mount.
 
 **LeaderboardPage** — reads `localStorage` on mount into local state. Top-3 rendered as a podium (display order: 2nd | 1st | 3rd). Rows 4–20 in a table. Current-session row highlighted via `location.state.currentSessionId`. Data-clear confirmation uses `Modal.tsx`. Route `/leaderboard` is public (no `RequireSession` guard).
 
 **getGrade** — signature changed from ratio-based `(score, total) → string` to point-based `(totalScore) → { grade, label, emoji }`. Update all callers accordingly.
+
+**Settings** — `src/hooks/useSettings.ts` exports `useSettings()` → `{ settings, update }`. Uses `useSyncExternalStore` with module-level pub/sub (no React context needed). Persists to `localStorage` key `quiz_settings`. Fields: `soundEnabled: boolean`, `fontSize: 'normal' | 'large'`. All localStorage access is wrapped in try/catch.
+
+**Sound effects** — `src/hooks/useSoundEffects.ts` exports `useSoundEffects()` → `{ playCorrect, playWrong, playTimeout, playClick, playLevelUp, playFinal }`. Uses Web Audio API with a module-level `AudioContext` singleton. All audio operations in try/catch. Reads `soundEnabled` from `useSettings()`. `tone(freq, startTime, duration, type, gain)` helper schedules notes with exponential gain ramp.
+
+**Sound placement**:
+- `QuizPage`: `playCorrect`/`playWrong` in `handleSelect`, `playTimeout` in `handleExpire`, `playClick` in `handleNext`
+- `CategoryResultPage`: `playLevelUp` on mount
+- `FinalResultPage`: `playFinal(grade)` on mount
+
+**Keyboard navigation** — QuizPage listens for numeric keys 1–4 to select answers. `handleSelect` is `useCallback`; synced to `handleSelectRef` via `useEffect` (no deps) so the keyboard handler always calls the latest version without stale closures.
+
+**Accessibility (WCAG 2.1 AA)**:
+- Answer buttons: `aria-label="①번 선택지: [text]"`, `aria-pressed`
+- Timer: `<span className="sr-only" role="timer" aria-live="polite">` announces at 10 s, 5 s, 3 s remaining
+- Feedback: `<div className="sr-only" role="status" aria-live="assertive">` announces result immediately
+- `FeedbackOverlay`: `role="dialog"` + `aria-modal="true"` + `autoFocus` on next button
+- ESC key in `FeedbackOverlay` advances to next question
+
+**Error handling**:
+- `ErrorBoundary` wraps the entire app in `App.tsx`; shows friendly fallback UI
+- `NotFoundPage` renders for `*` route (replaces old `<Navigate to="/" />`)
+- `saveToLeaderboard` in gameStore is wrapped in try/catch (silent failure in private browsing)
+
+**Shake animation** — Wrong answer button gets `animate-shake` class (0.45 s ease-in-out lateral shake) when `revealed && isSelected && !isAnswer`.
+
+**Timer number pulse** — `animate-timer-num-pulse` applied to the number span inside `CircularTimer` when `remaining <= 3` (in addition to existing `animate-pulse` on the container).
 
 ### Data
 

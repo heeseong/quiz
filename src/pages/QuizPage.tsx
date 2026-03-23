@@ -1,9 +1,10 @@
-import { useState, useCallback, useEffect, useReducer } from 'react';
+import { useState, useCallback, useEffect, useReducer, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { questions } from '../data/questions';
 import { shuffleOptions, getCategoryLabel, getCategoryEmoji } from '../utils/quiz';
 import { useTimer } from '../hooks/useTimer';
+import { useSoundEffects } from '../hooks/useSoundEffects';
 import Badge from '../components/Badge';
 import FeedbackOverlay from '../components/FeedbackOverlay';
 import type { Question } from '../types';
@@ -52,7 +53,12 @@ function CircularTimer({ remaining, max }: { remaining: number; max: number }) {
         />
       </svg>
       <div className="absolute flex flex-col items-center leading-none">
-        <span className="text-xl font-bold" style={{ color }}>{remaining}</span>
+        <span
+          className={`text-xl font-bold ${isPulsing ? 'animate-timer-num-pulse' : ''}`}
+          style={{ color }}
+        >
+          {remaining}
+        </span>
         <span className="text-[10px] text-gray-400 mt-0.5">초</span>
       </div>
     </div>
@@ -63,6 +69,7 @@ export default function QuizPage() {
   const navigate = useNavigate();
   const { currentCategory, currentQuestionIndex, scores, submitAnswer, nextQuestion, completeCategory } =
     useGameStore((s) => s);
+  const { playCorrect, playWrong, playTimeout, playClick } = useSoundEffects();
 
   const [prepared] = useState<ShuffledQ[]>(() =>
     currentCategory ? prepareQuestions(currentCategory) : []
@@ -90,30 +97,57 @@ export default function QuizPage() {
     if (revealed || !current) return;
     dispatch({ type: 'EXPIRE' });
     submitAnswer(current.question.id, -1, TIME_LIMIT);
-  }, [revealed, current, submitAnswer]);
+    playTimeout();
+  }, [revealed, current, submitAnswer, playTimeout]);
 
   const { remaining, stop } = useTimer(TIME_LIMIT, handleExpire);
+
+  // handleSelect defined as useCallback so it can be used in refs without breaking hook rules
+  const handleSelect = useCallback((shuffledIdx: number) => {
+    if (revealed || !current) return;
+    stop();
+    const ts = TIME_LIMIT - remaining;
+    dispatch({ type: 'SELECT', idx: shuffledIdx, ts });
+    const originalIdx = current.shuffledToOriginal[shuffledIdx] as 0 | 1 | 2 | 3;
+    submitAnswer(current.question.id, originalIdx, ts);
+    if (current.newAnswerIndex === shuffledIdx) {
+      playCorrect();
+    } else {
+      playWrong();
+    }
+  }, [revealed, current, stop, remaining, submitAnswer, playCorrect, playWrong]);
+
+  // Ref for handleSelect to avoid stale closures in keyboard handler
+  const handleSelectRef = useRef<(idx: number) => void>(() => {});
+  // Sync the ref in an effect (not during render)
+  useEffect(() => { handleSelectRef.current = handleSelect; });
 
   // 문제가 바뀔 때 상태 초기화
   useEffect(() => {
     dispatch({ type: 'RESET' });
   }, [currentQuestionIndex]);
 
+  // Keyboard navigation (1-4 keys)
+  useEffect(() => {
+    if (revealed) return;
+    function onKey(e: KeyboardEvent) {
+      const n = parseInt(e.key, 10);
+      if (n >= 1 && n <= 4) {
+        e.preventDefault();
+        handleSelectRef.current(n - 1);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [revealed]);
+
   if (!currentCategory || !current) {
     navigate('/category');
     return null;
   }
 
-  function handleSelect(shuffledIdx: number) {
-    if (revealed) return;
-    stop();
-    const ts = TIME_LIMIT - remaining;
-    dispatch({ type: 'SELECT', idx: shuffledIdx, ts });
-    const originalIdx = current.shuffledToOriginal[shuffledIdx] as 0 | 1 | 2 | 3;
-    submitAnswer(current.question.id, originalIdx, ts);
-  }
-
   function handleNext() {
+    playClick();
     if (currentQuestionIndex + 1 >= prepared.length) {
       completeCategory();
       navigate('/result/category');
@@ -157,7 +191,13 @@ export default function QuizPage() {
 
       {/* ── 타이머 + 문제 ── */}
       <div className="flex items-start gap-3">
-        <CircularTimer remaining={remaining} max={TIME_LIMIT} />
+        <div>
+          <CircularTimer remaining={remaining} max={TIME_LIMIT} />
+          {/* Screen reader timer announcement */}
+          <span className="sr-only" role="timer" aria-live="polite" aria-atomic="true">
+            {[10, 5, 3].includes(remaining) ? `남은 시간 ${remaining}초` : ''}
+          </span>
+        </div>
         <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-4 min-h-[92px] flex items-center">
           <div>
             <p className="text-xs text-gray-400 mb-1 font-medium">Q{currentQuestionIndex + 1}</p>
@@ -173,6 +213,7 @@ export default function QuizPage() {
         {current.shuffledOptions.map((opt, idx) => {
           const isAnswer = idx === current.newAnswerIndex;
           const isSelected = idx === selected;
+          const shouldShake = revealed && isSelected && !isAnswer;
 
           let cls =
             'w-full text-left px-4 py-3.5 rounded-xl border-2 font-medium text-sm transition-all duration-200 flex items-center gap-3 ';
@@ -187,12 +228,19 @@ export default function QuizPage() {
             cls += 'border-gray-100 bg-gray-50 text-gray-400 cursor-default';
           }
 
+          if (shouldShake) {
+            cls += ' animate-shake';
+          }
+
           return (
             <button
               key={idx}
               className={cls}
               onClick={() => handleSelect(idx)}
               disabled={revealed}
+              aria-label={`${['①', '②', '③', '④'][idx]}번 선택지: ${opt}`}
+              aria-pressed={revealed ? isSelected : undefined}
+              aria-describedby={revealed && isAnswer ? 'correct-answer' : undefined}
             >
               <span
                 className={`text-base shrink-0 w-6 text-center ${
@@ -202,12 +250,21 @@ export default function QuizPage() {
                 {['①', '②', '③', '④'][idx]}
               </span>
               <span className="flex-1">{opt}</span>
-              {revealed && isAnswer && <span className="text-green-500">✅</span>}
+              {revealed && isAnswer && <span className="text-green-500" id="correct-answer">✅</span>}
               {revealed && isSelected && !isAnswer && <span className="text-red-400">❌</span>}
             </button>
           );
         })}
       </div>
+
+      {/* ── 피드백 결과 스크린리더 공지 ── */}
+      {revealed && (
+        <div className="sr-only" role="status" aria-live="assertive" aria-atomic="true">
+          {feedbackResult === 'correct' ? `정답입니다! ${earnedBase + earnedBonus}점 획득`
+           : feedbackResult === 'timeout' ? '시간 초과입니다.'
+           : '오답입니다.'}
+        </div>
+      )}
 
       {/* ── 피드백 오버레이 ── */}
       {revealed && (

@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+html {
+  font-size: var(--app-font-size, 16px);
+}
+
 @theme {
   --color-brand: #3B5BA5;
   --color-brand-dark: #2d4a8a;
@@ -48,3 +52,49 @@ body {
   50%       { transform: scale(1.15); }
 }
 .animate-sparkle { animation: sparkle 0.5s ease-in-out 3; }
+
+/* Shake animation for wrong answer button */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15%       { transform: translateX(-6px); }
+  30%       { transform: translateX(6px); }
+  45%       { transform: translateX(-5px); }
+  60%       { transform: translateX(5px); }
+  75%       { transform: translateX(-3px); }
+  90%       { transform: translateX(3px); }
+}
+.animate-shake { animation: shake 0.45s ease-in-out; }
+
+/* Score float-up in feedback overlay */
+@keyframes floatUp {
+  0%   { opacity: 1; transform: translateY(0) scale(1.2); }
+  100% { opacity: 0; transform: translateY(-40px) scale(0.9); }
+}
+.animate-float-up { animation: floatUp 0.8s ease-out both; }
+
+/* Timer number pulse when urgent */
+@keyframes timerNumPulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.3); }
+}
+.animate-timer-num-pulse { animation: timerNumPulse 0.5s ease-in-out infinite; }
+
+/* Slide-in from right (nickname page) */
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(28px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in-right { animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* Screen reader only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

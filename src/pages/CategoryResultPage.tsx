@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { questions } from '../data/questions';
 import { getCategoryLabel, getCategoryEmoji } from '../utils/quiz';
+import { useSoundEffects } from '../hooks/useSoundEffects';
 import type { Category } from '../types';
 
 const ALL_CATEGORIES: Category[] = ['KOREAN_HISTORY', 'SCIENCE', 'ENGLISH'];
@@ -40,7 +41,11 @@ function AccuracyRing({ correct, total }: { correct: number; total: number }) {
 export default function CategoryResultPage() {
   const navigate = useNavigate();
   const { currentCategory, scores, answers } = useGameStore((s) => s);
+  const { playLevelUp } = useSoundEffects();
   const [showWrong, setShowWrong] = useState(true);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { playLevelUp(); }, []);
 
   if (!currentCategory) {
     navigate('/category');

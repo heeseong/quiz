@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { questions } from '../data/questions';
 import { getGrade, getCategoryLabel, getCategoryEmoji, formatTime } from '../utils/quiz';
+import { useSoundEffects } from '../hooks/useSoundEffects';
 import type { Category } from '../types';
 
 const CATEGORIES: Category[] = ['KOREAN_HISTORY', 'SCIENCE', 'ENGLISH'];
@@ -16,18 +17,23 @@ const GRADE_STYLES: Record<string, { bg: string; ring: string; text: string }> =
 };
 
 function useCountUp(target: number, duration = 1500) {
-  const [display, setDisplay] = useState(0);
+  const [display, dispatchDisplay] = useReducer((_: number, val: number) => val, 0);
   useEffect(() => {
-    if (target === 0) return;
-    const steps = 60;
-    const stepTime = duration / steps;
-    let step = 0;
-    const id = setInterval(() => {
-      step++;
-      setDisplay(Math.round((step / steps) * target));
-      if (step >= steps) clearInterval(id);
-    }, stepTime);
-    return () => clearInterval(id);
+    if (target === 0) {
+      dispatchDisplay(0);
+      return;
+    }
+    let rafId: number;
+    const startTime = performance.now();
+    function tick(now: number) {
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+      dispatchDisplay(Math.round(eased * target));
+      if (progress < 1) rafId = requestAnimationFrame(tick);
+    }
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
   }, [target, duration]);
   return display;
 }
@@ -36,6 +42,7 @@ export default function FinalResultPage() {
   const navigate = useNavigate();
   const { nickname, scores, answers, startedAt, resetGame, resetQuiz, saveToLeaderboard } =
     useGameStore((s) => s);
+  const { playFinal } = useSoundEffects();
 
   const saved = useRef(false);
   const sessionIdRef = useRef(crypto.randomUUID());
@@ -64,6 +71,9 @@ export default function FinalResultPage() {
       durationSeconds,
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { playFinal(grade.grade); }, []);
 
   useEffect(() => {
     const id = setTimeout(() => setAnimated(true), 400);

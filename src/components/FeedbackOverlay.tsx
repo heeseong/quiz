@@ -36,6 +36,15 @@ export default function FeedbackOverlay({
     return () => clearTimeout(id);
   }, [countdown]);
 
+  // ESC key to advance
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onNextRef.current();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   const borderColor =
     result === 'correct' ? 'border-green-400' : result === 'wrong' ? 'border-red-400' : 'border-gray-400';
 
@@ -45,6 +54,11 @@ export default function FeedbackOverlay({
   const circleC = 2 * Math.PI * circleR;
   const progressOffset = circleC * (countdown / AUTO_ADVANCE_SEC);
 
+  const ariaLabel =
+    result === 'correct' ? `정답입니다! ${totalEarned}점 획득`
+    : result === 'timeout' ? '시간 초과!'
+    : '아쉽네요!';
+
   return (
     <>
       {/* dim backdrop */}
@@ -52,7 +66,20 @@ export default function FeedbackOverlay({
 
       {/* bottom sheet */}
       <div className="fixed inset-x-0 bottom-0 z-50 animate-slide-up">
-        <div className={`bg-white rounded-t-3xl shadow-2xl border-t-4 ${borderColor} px-6 pt-6 pb-10`}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={ariaLabel}
+          className={`bg-white rounded-t-3xl shadow-2xl border-t-4 ${borderColor} px-6 pt-6 pb-10`}
+        >
+          {/* score float-up animation for correct */}
+          {result === 'correct' && (
+            <div className="relative h-12 mb-1 overflow-visible">
+              <span className="absolute inset-x-0 text-center text-3xl font-extrabold text-green-500 animate-float-up pointer-events-none">
+                +{earnedBase + earnedBonus}
+              </span>
+            </div>
+          )}
 
           {/* result headline */}
           <div className="text-center mb-4">
@@ -96,6 +123,7 @@ export default function FeedbackOverlay({
           {/* next button + countdown ring */}
           <div className="flex items-center gap-3">
             <button
+              autoFocus
               onClick={() => onNextRef.current()}
               className="flex-1 bg-[#3B5BA5] hover:bg-[#2d4a8a] text-white font-semibold py-3 rounded-xl transition-colors text-sm"
             >

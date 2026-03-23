@@ -116,10 +116,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   saveToLeaderboard(record) {
-    const existing = get().getLeaderboard();
-    const updated = [...existing, record]
-      .sort((a, b) => b.totalScore - a.totalScore)
-      .slice(0, MAX_LEADERBOARD);
-    localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(updated));
+    try {
+      const existing = get().getLeaderboard();
+      const updated = [...existing, record]
+        .sort((a, b) => b.totalScore - a.totalScore)
+        .slice(0, MAX_LEADERBOARD);
+      localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(updated));
+    } catch {
+      // Silently ignore storage errors (private browsing, quota exceeded)
+    }
   },
 }));

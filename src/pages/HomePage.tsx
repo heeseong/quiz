@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Trophy, BookOpen, FlaskConical, Languages } from 'lucide-react';
+import { Play, Trophy, BookOpen, FlaskConical, Languages, Settings } from 'lucide-react';
 import { useGameStore } from '../store/gameStore';
 import Button from '../components/Button';
 import Badge from '../components/Badge';
@@ -36,6 +36,15 @@ export default function HomePage() {
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center px-4 py-12 overflow-hidden">
       <BgDecoration />
+
+      {/* Settings button */}
+      <button
+        onClick={() => navigate('/settings')}
+        className="absolute top-4 right-4 z-10 p-2 rounded-xl text-gray-400 hover:text-[#3B5BA5] hover:bg-white/70 transition-colors"
+        aria-label="설정"
+      >
+        <Settings size={20} />
+      </button>
 
       <div className="relative z-10 w-full max-w-sm mx-auto flex flex-col items-center gap-8 animate-fade-up">
 
